@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Book a Tour — Sorsogon Tours</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>📋 Book Your Tour</h1>
+    <a href="index.html" class="back">← Back to Home</a>
+  </header>
+
+  <!-- LIVE WEATHER WIDGET -->
+  <section class="weather-card">
+    <h3>🌤️ Current Weather in Sorsogon</h3>
+    <p id="weather-status">Loading weather…</p>
+    <div id="weather-details"></div>
+  </section>
+
+  <!-- BOOKING FORM -->
+  <form id="bookingForm">
+    <label>Full Name
+      <input type="text" name="name" required />
+    </label>
+    <label>Email Address
+      <input type="email" name="email" required />
+    </label>
+    <label>Tour Date
+      <input type="date" name="date" required />
+    </label>
+    <label>Number of Guests
+      <input type="number" name="guests" min="1" max="20" required />
+    </label>
+    <label>Tour Package
+      <select name="package" required>
+        <option value="">-- Select --</option>
+        <option value="Whale Shark Watching">Whale Shark Watching</option>
+        <option value="Bulusan Volcano Trek">Bulusan Volcano Trek</option>
+        <option value="Matnog Island Hopping">Matnog Island Hopping</option>
+        <option value="Rizal Beach Day Tour">Rizal Beach Day Tour</option>
+      </select>
+    </label>
+    <button type="submit" id="submitBtn">Confirm Booking</button>
+    <p id="form-status"></p>
+  </form>
+
+  <script>
+    // ============ 1. WEATHER API ============
+    const WEATHER_KEY = "9722fe9133614cc392100318262709 "; // 🔑 replace
+    const CITY = "Sorsogon";
+    const weatherUrl = `https://api.weatherapi.com/v1/current.json?key=${WEATHER_KEY}&q=${CITY}`;
+
+    fetch(weatherUrl)
+      .then(res => {
+        if (!res.ok) throw new Error("Weather API failed");
+        return res.json();
+      })
+      .then(data => {
+        document.getElementById("weather-status").innerText =
+          `${data.location.name}, ${data.location.country}`;
+        document.getElementById("weather-details").innerHTML = `
+          <p>🌡️ <strong>${data.current.temp_c}°C</strong> (feels like ${data.current.feelslike_c}°C)</p>
+          <p>💧 Humidity: ${data.current.humidity}% &nbsp;|&nbsp;
+             💨 Wind: ${data.current.wind_kph} kph ${data.current.wind_dir}</p>
+          <p>☁️ Cloud: ${data.current.cloud}% &nbsp;|&nbsp;
+             📊 Pressure: ${data.current.pressure_mb} mb</p>
+        `;
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("weather-status").innerText =
+          "⚠️ Weather data unavailable right now.";
+      });
+
+    // ============ 2. FORM → APPS SCRIPT ============
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzC37fehYEgZE1E0rtDhqXaOLAdyESY6uSVDdoHSaI3b1jS-ztBkgtkAvIYkzcKM6RJ/exec"; // 🔑 paste your /exec URL
+
+    document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById("form-status");
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      status.innerText = "Sending your booking…";
+
+      const formData = {
+        name: form.name.value,
+        email: form.email.value,
+        date: form.date.value,
+        guests: form.guests.value,
+        package: form.package.value
+      };
+
+      try {
+        const body = new URLSearchParams(formData).toString();
+        const res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: body
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          status.style.color = "green";
+          status.innerText = "✅ Booking confirmed! Check your email for the PDF receipt.";
+          form.reset();
+        } else {
+          throw new Error(result.message || "Backend error");
+        }
+      } catch (err) {
+        console.error(err);
+        status.style.color = "red";
+        status.innerText = "❌ Something went wrong. Please try again.";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
